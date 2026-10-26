@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Now Playing</title>
+  <style>
+    @font-face {
+      font-family: "Instrument Serif";
+      src: url("/fonts/InstrumentSerif-Regular.ttf") format("truetype");
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: "Instrument Serif";
+      src: url("/fonts/InstrumentSerif-Italic.ttf") format("truetype");
+      font-weight: 400;
+      font-style: italic;
+      font-display: swap;
+    }
+
+    :root {
+      --ink: #f4f1ea;
+      --muted: rgba(244, 241, 234, 0.58);
+      --faint: rgba(244, 241, 234, 0.34);
+      color-scheme: dark;
+    }
+
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: #070708;
+      color: var(--ink);
+      font-family: "Adwaita Sans", "Liberation Sans", sans-serif;
+      overflow: hidden;
+      cursor: none;
+    }
+
+    .wash, .wash img {
+      position: fixed;
+      inset: -8%;
+      width: 116%;
+      height: 116%;
+    }
+    .wash img {
+      object-fit: cover;
+      filter: blur(54px) saturate(1.15) brightness(0.38);
+      transform: scale(1.08);
+      opacity: 0;
+      transition: opacity 1.1s ease;
+    }
+    .wash img.show { opacity: 1; }
+    .wash::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse at center, rgba(0,0,0,0.08), rgba(0,0,0,0.72) 72%),
+        linear-gradient(to top, rgba(0,0,0,0.55), transparent 42%);
+    }
+
+    .stage {
+      position: relative;
+      z-index: 1;
+      height: 100%;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      padding: 4.2vh 6vw 6.5vh;
+    }
+
+    .mark {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      letter-spacing: 0.42em;
+      text-transform: uppercase;
+      font-size: 12px;
+      color: var(--faint);
+    }
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #d6ff6b;
+      box-shadow: 0 0 12px #d6ff6b;
+      animation: pulse 1.8s ease-in-out infinite;
+    }
+    .quiet .dot, .listening .dot {
+      background: var(--faint);
+      box-shadow: none;
+    }
+
+    .center {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 0;
+    }
+
+    .sleeve {
+      width: min(62vmin, 760px);
+      aspect-ratio: 1;
+      position: relative;
+      transition: transform 0.9s cubic-bezier(.2,.7,.2,1), opacity 0.9s ease;
+    }
+    .sleeve.enter { animation: arrive 0.9s cubic-bezier(.2,.7,.2,1); }
+    .cover, .ring {
+      position: absolute;
+      inset: 0;
+      border-radius: 10px;
+    }
+    .cover {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      background: #141416;
+      box-shadow:
+        0 40px 80px rgba(0,0,0,0.45),
+        0 0 0 1px rgba(255,255,255,0.08);
+      opacity: 0;
+      transition: opacity 0.7s ease;
+    }
+    .cover.show { opacity: 1; }
+    .ring {
+      border-radius: 50%;
+      border: 1px solid rgba(244,241,234,0.18);
+      transform: scale(0.72);
+      opacity: 0;
+    }
+    .listening .ring, .empty .ring {
+      opacity: 1;
+      animation: listen 2.8s ease-in-out infinite;
+    }
+    .quiet .sleeve { opacity: 0.55; transform: scale(0.985); }
+
+    .meta {
+      margin-top: 4.2vh;
+      text-align: center;
+      max-width: 80vw;
+    }
+    h1 {
+      margin: 0;
+      font-family: "Instrument Serif", "Nimbus Roman", "Liberation Serif", serif;
+      font-weight: 400;
+      font-size: clamp(40px, 4.6vw, 76px);
+      letter-spacing: -0.03em;
+      line-height: 0.95;
+    }
+    .artist {
+      margin-top: 14px;
+      font-size: 14px;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .album {
+      margin-top: 8px;
+      font-size: 13px;
+      letter-spacing: 0.08em;
+      color: var(--faint);
+    }
+    .listening h1, .empty h1 { font-style: italic; color: var(--muted); }
+
+    @keyframes arrive {
+      from { opacity: 0; transform: scale(0.96) translateY(10px); }
+      to { opacity: 1; transform: none; }
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.35; }
+    }
+    @keyframes listen {
+      0%, 100% { transform: scale(0.62); opacity: 0.25; }
+      50% { transform: scale(0.84); opacity: 0.7; }
+    }
+  </style>
+</head>
+<body class="listening empty">
+  <div class="wash"><img id="wash" alt=""></div>
+  <main class="stage">
+    <div class="mark"><span class="dot"></span><span id="mark">Listening</span></div>
+    <div class="center">
+      <div class="sleeve" id="sleeve">
+        <div class="ring"></div>
+        <img class="cover" id="cover" alt="">
+      </div>
+      <div class="meta">
+        <h1 id="title">Listening</h1>
+        <div class="artist" id="artist"></div>
+        <div class="album" id="album"></div>
+      </div>
+    </div>
+    <div></div>
+  </main>
+  <script>
+    const body = document.body;
+    const cover = document.getElementById("cover");
+    const wash = document.getElementById("wash");
+    const title = document.getElementById("title");
+    const artist = document.getElementById("artist");
+    const album = document.getElementById("album");
+    const mark = document.getElementById("mark");
+    const sleeve = document.getElementById("sleeve");
+    let currentKey = "";
+
+    function render(data) {
+      const playing = data.status === "playing" && data.title;
+      const quiet = data.status === "quiet" && data.title;
+      body.className = playing ? "playing" : quiet ? "quiet" : "listening empty";
+      mark.textContent = playing ? "Now playing" : quiet ? "Last heard" : "Listening";
+
+      if (!data.title) {
+        title.textContent = "Listening";
+        artist.textContent = "";
+        album.textContent = "";
+        cover.classList.remove("show");
+        wash.classList.remove("show");
+        return;
+      }
+
+      const src = data.art ? data.art + "?v=" + encodeURIComponent(data.changed_at || data.key) : "";
+      if (data.key !== currentKey) {
+        currentKey = data.key;
+        sleeve.classList.remove("enter");
+        void sleeve.offsetWidth;
+        sleeve.classList.add("enter");
+      }
+      if (src && cover.getAttribute("src") !== src) {
+        cover.src = src;
+        wash.src = src;
+      }
+      cover.classList.toggle("show", Boolean(src));
+      wash.classList.toggle("show", Boolean(src) && playing);
+      title.textContent = data.title;
+      artist.textContent = data.artist || "";
+      album.textContent = data.album || "";
+    }
+
+    function connect() {
+      const events = new EventSource("/events");
+      events.onmessage = (event) => render(JSON.parse(event.data));
+      events.onerror = () => {
+        events.close();
+        setTimeout(connect, 1500);
+      };
+    }
+    connect();
+  </script>
+</body>
+</html>
