@@ -260,6 +260,19 @@ class CinemaRefreshTests(unittest.TestCase):
         self.assertTrue(server.refresh_cinema())
         self.assertEqual(server.cinema_board["movies"], [{"title": "Fresh"}])
 
+    def test_no_theater_skips_fetch_and_needs_setup(self):
+        server.config["theater_id"] = None
+
+        def fail(theater_id):
+            raise AssertionError("fetched without a theater")
+        server.cinema.board = fail
+        self.assertTrue(server.refresh_cinema())
+        self.assertEqual(server.cinema_board["movies"], [])
+        self.assertTrue(server.snapshot()["cinema"]["needs_setup"])
+
+    def test_configured_theater_does_not_need_setup(self):
+        self.assertFalse(server.snapshot()["cinema"]["needs_setup"])
+
     def test_new_theater_replaces_board_even_when_empty(self):
         server.config["theater_id"] = 8
         server.cinema.board = lambda theater_id: {"id": theater_id, "name": "Other", "movies": []}

@@ -165,9 +165,14 @@ Installed. The listener runs as a user service and starts at login.
 
   Pick a theater:  http://127.0.0.1:$PORT/setup
   Fullscreen:      $BIN/marquee-kiosk
-                   To start it at login on Hyprland, add to your config:
-                   exec-once = $BIN/marquee-kiosk
-                   Close the kiosk with Super+Q. The listener keeps running.
+                   Close it with Super+Q. The listener keeps running.
+
+Start the display at login:
+  Omarchy, in ~/.config/hypr/autostart.lua:
+    o.launch_on_start("$BIN/marquee-kiosk")
+    o.window({ class = "marquee" }, { fullscreen = true })
+  Other Hyprland setups, in hyprland.conf:
+    exec-once = $BIN/marquee-kiosk
 
 The first run downloads a small speech model for voice commands.
 EOF

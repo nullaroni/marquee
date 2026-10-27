@@ -30,11 +30,19 @@ The installer copies the app to `~/.local/share/marquee`, installs the user serv
 
 To try it without installing: `python3 server.py`, then open `http://127.0.0.1:8787`.
 
-`marquee-kiosk` (installed to `~/.local/bin`) waits for `/health`, then opens Chromium fullscreen with a profile in `~/.local/share/marquee/chrome-profile`. Close the window with Super+Q; the listener keeps running. On Omarchy, start it from `~/.config/hypr/autostart.lua`:
+`marquee-kiosk` (installed to `~/.local/bin`) waits for `/health`, then opens Chromium fullscreen with a profile in `~/.local/share/marquee/chrome-profile`. Close the window with Super+Q; the listener keeps running. The installer prints these lines with your paths filled in.
+
+To start it at login on Omarchy, add to `~/.config/hypr/autostart.lua`:
 
 ```lua
 o.launch_on_start("/home/you/.local/bin/marquee-kiosk")
-o.window({ class = "chrome-127.0.0.1__-Default" }, { fullscreen = true })
+o.window({ class = "marquee" }, { fullscreen = true })
+```
+
+On other Hyprland setups, add to `hyprland.conf`:
+
+```ini
+exec-once = /home/you/.local/bin/marquee-kiosk
 ```
 
 ## Configuration

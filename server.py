@@ -62,15 +62,15 @@ state = {
 art_bytes = b""
 art_type = "image/jpeg"
 cinema_board = {
-    "id": cinema.LAKELAND["id"],
-    "name": cinema.LAKELAND["name"],
+    "id": None,
+    "name": "",
     "label": "",
     "date": "",
     "movies": [],
 }
 config = {
-    "theater_id": cinema.LAKELAND["id"],
-    "theater_name": cinema.LAKELAND["name"],
+    "theater_id": None,
+    "theater_name": "",
     "quiet_for_cinema": DEFAULT_CINEMA_AFTER,
 }
 config_lock = threading.Lock()
@@ -163,6 +163,7 @@ def snapshot():
     else:
         data["song_position"] = 0
     data["cinema"] = {
+        "needs_setup": not config.get("theater_id"),
         "id": board.get("id"),
         "name": board.get("name") or config.get("theater_name") or "",
         "label": board.get("label") or "",
@@ -417,9 +418,15 @@ def listen_loop():
 
 
 def refresh_cinema() -> bool:
-    """Fetch the showtimes board. Returns True when it has movies."""
+    """Fetch the showtimes board. Returns False when it should be retried soon."""
     global cinema_board
-    theater_id = config.get("theater_id") or cinema.LAKELAND["id"]
+    theater_id = config.get("theater_id")
+    if not theater_id:
+        # Fresh install: nothing to fetch until a theater is picked on /setup.
+        with state_lock:
+            cinema_board = {"id": None, "name": "", "label": "", "date": "", "movies": []}
+        publish()
+        return True
     try:
         board = cinema.board(int(theater_id))
     except Exception as exc:
@@ -637,9 +644,6 @@ class Handler(BaseHTTPRequestHandler):
 
 def main():
     load_config()
-    if not config.get("theater_id"):
-        config["theater_id"] = cinema.LAKELAND["id"]
-        config["theater_name"] = cinema.LAKELAND["name"]
     voice.start()
     boost_mic()
     mic_bias()

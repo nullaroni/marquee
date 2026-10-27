@@ -537,8 +537,14 @@
       const movies = board.movies || [];
       mark.textContent = [board.name, board.label].filter(Boolean).join("  ·  ") || "Cinemark";
       if (!movies.length) {
-        film.textContent = board.name || "No showtimes";
-        facts.textContent = "";
+        if (board.needs_setup) {
+          mark.textContent = "Marquee";
+          film.textContent = "Pick a theater";
+          facts.textContent = "Open " + location.origin + "/setup on this computer";
+        } else {
+          film.textContent = board.name || "No showtimes";
+          facts.textContent = "";
+        }
         directorPlay.hidden = true;
         formats.replaceChildren();
         return;
