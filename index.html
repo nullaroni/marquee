@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Now Playing</title>
+  <title>Marquee</title>
   <style>
     @font-face {
       font-family: "Instrument Serif";
@@ -19,14 +19,12 @@
       font-style: italic;
       font-display: swap;
     }
-
     :root {
       --ink: #f4f1ea;
-      --muted: rgba(244, 241, 234, 0.58);
-      --faint: rgba(244, 241, 234, 0.34);
+      --muted: rgba(244, 241, 234, 0.62);
+      --faint: rgba(244, 241, 234, 0.38);
       color-scheme: dark;
     }
-
     * { box-sizing: border-box; }
     html, body {
       margin: 0;
@@ -37,7 +35,6 @@
       overflow: hidden;
       cursor: none;
     }
-
     .wash, .wash img {
       position: fixed;
       inset: -8%;
@@ -46,82 +43,64 @@
     }
     .wash img {
       object-fit: cover;
-      filter: blur(54px) saturate(1.15) brightness(0.38);
+      filter: blur(70px) saturate(1.2) brightness(0.28);
       transform: scale(1.08);
       opacity: 0;
-      transition: opacity 1.1s ease;
+      transition: opacity 1s ease;
     }
     .wash img.show { opacity: 1; }
-    .wash::after {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background:
-        radial-gradient(ellipse at center, rgba(0,0,0,0.08), rgba(0,0,0,0.72) 72%),
-        linear-gradient(to top, rgba(0,0,0,0.55), transparent 42%);
-    }
-
-    .stage {
-      position: relative;
-      z-index: 1;
+    .scene { display: none; position: absolute; inset: 0; }
+    .music {
       height: 100%;
-      display: grid;
-      grid-template-rows: auto 1fr auto;
-      padding: 4.2vh 6vw 6.5vh;
-    }
-
-    .mark {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      letter-spacing: 0.42em;
-      text-transform: uppercase;
-      font-size: 12px;
-      color: var(--faint);
-    }
-    .dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: #d6ff6b;
-      box-shadow: 0 0 12px #d6ff6b;
-      animation: pulse 1.8s ease-in-out infinite;
-    }
-    .quiet .dot, .listening .dot {
-      background: var(--faint);
-      box-shadow: none;
-    }
-
-    .center {
-      display: flex;
-      flex-direction: column;
+      padding: 4vh 6vw 6vh;
+      background: #070708;
       align-items: center;
       justify-content: center;
-      min-height: 0;
     }
-
+    body.music .music {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 3.2vw;
+      padding: 3vh 3vw;
+    }
+    .lyrics { display: none; }
     .sleeve {
-      width: min(62vmin, 760px);
-      aspect-ratio: 1;
+      width: 90vh;
+      height: 90vh;
       position: relative;
-      transition: transform 0.9s cubic-bezier(.2,.7,.2,1), opacity 0.9s ease;
     }
-    .sleeve.enter { animation: arrive 0.9s cubic-bezier(.2,.7,.2,1); }
+    body.lyrics .sleeve { width: 62vh; height: 62vh; }
+    body.lyrics .meta { display: none; }
+    body.lyrics .lyrics {
+      display: flex;
+      flex-wrap: wrap;
+      align-content: center;
+      gap: 0.22em 0.38em;
+      font-family: "Instrument Serif", "Nimbus Roman", serif;
+      font-size: clamp(42px, 4.4vw, 92px);
+      line-height: 1.05;
+      letter-spacing: -0.03em;
+    }
+    .word { color: rgba(244, 241, 234, 0.28); transition: color 0.12s linear, transform 0.12s linear; }
+    .word.on {
+      color: #f7f3ea;
+      transform: translateY(-0.04em);
+      text-shadow: 0 0 28px rgba(214, 255, 107, 0.35);
+    }
+    .word.sung { color: rgba(244, 241, 234, 0.55); }
     .cover, .ring {
       position: absolute;
       inset: 0;
-      border-radius: 10px;
+      border-radius: 8px;
     }
     .cover {
       width: 100%;
       height: 100%;
       object-fit: cover;
       background: #141416;
-      box-shadow:
-        0 40px 80px rgba(0,0,0,0.45),
-        0 0 0 1px rgba(255,255,255,0.08);
+      box-shadow: 0 50px 100px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.08);
       opacity: 0;
-      transition: opacity 0.7s ease;
+      transition: opacity 0.6s ease;
     }
     .cover.show { opacity: 1; }
     .ring {
@@ -130,71 +109,299 @@
       transform: scale(0.72);
       opacity: 0;
     }
-    .listening .ring, .empty .ring {
-      opacity: 1;
-      animation: listen 2.8s ease-in-out infinite;
+    body.listening .ring { opacity: 1; animation: listen 2.8s ease-in-out infinite; }
+    .meta { text-align: left; min-width: 0; }
+    .mark {
+      position: absolute;
+      top: 1.1vh;
+      left: 3vw;
+      z-index: 4;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      letter-spacing: 0.38em;
+      text-transform: uppercase;
+      font-size: 12px;
+      color: var(--faint);
+      opacity: 0;
+      transition: opacity 0.45s ease;
     }
-    .quiet .sleeve { opacity: 0.55; transform: scale(0.985); }
-
-    .meta {
-      margin-top: 4.2vh;
-      text-align: center;
-      max-width: 80vw;
+    .mark.show, body.cinema .mark { opacity: 1; }
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #d6ff6b;
+      box-shadow: 0 0 12px #d6ff6b;
+    }
+    body.quiet .dot, body.listening .dot, body.cinema .dot {
+      background: var(--faint);
+      box-shadow: none;
     }
     h1 {
       margin: 0;
-      font-family: "Instrument Serif", "Nimbus Roman", "Liberation Serif", serif;
+      font-family: "Instrument Serif", "Nimbus Roman", serif;
       font-weight: 400;
-      font-size: clamp(40px, 4.6vw, 76px);
-      letter-spacing: -0.03em;
-      line-height: 0.95;
+      font-size: clamp(52px, 4.8vw, 108px);
+      letter-spacing: -0.035em;
+      line-height: 0.9;
     }
     .artist {
-      margin-top: 14px;
+      margin-top: 18px;
       font-size: 14px;
       letter-spacing: 0.28em;
       text-transform: uppercase;
       color: var(--muted);
     }
     .album {
-      margin-top: 8px;
-      font-size: 13px;
-      letter-spacing: 0.08em;
+      margin-top: 10px;
+      font-family: "Instrument Serif", serif;
+      font-style: italic;
+      font-size: 22px;
       color: var(--faint);
     }
-    .listening h1, .empty h1 { font-style: italic; color: var(--muted); }
-
-    @keyframes arrive {
-      from { opacity: 0; transform: scale(0.96) translateY(10px); }
-      to { opacity: 1; transform: none; }
+    .cinema { background: #000; }
+    body.cinema .cinema {
+      display: block;
+      height: 100%;
+      background: #070708;
     }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.35; }
+    .poster-board {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4.5vw;
+      height: 100%;
+      padding: 4vh 5vw;
     }
+    .poster-board .meta { width: min(38vw, 640px); max-height: 84vh; overflow: hidden; }
+    .day-label {
+      margin: 18px 0 4px;
+      font-weight: 800;
+      font-size: 26px;
+      letter-spacing: 0.01em;
+      color: var(--ink);
+    }
+    body.cinema.trailer .poster-board { display: none; }
+    body.cinema.trailer .mark { opacity: 0; }
+    .trailer-board {
+      display: none;
+      position: absolute;
+      inset: 0;
+      background: #000;
+    }
+    body.cinema.trailer .trailer-board { display: block; }
+    .trailer-top {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 3;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 3vw;
+      padding: 2.6vh 4vw 6vh;
+      background: linear-gradient(to bottom, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.4) 55%, transparent 100%);
+      pointer-events: none;
+    }
+    .trailer-top .headline { min-width: 0; }
+    .trailer-top h2 {
+      margin: 0;
+      font-family: "Instrument Serif", serif;
+      font-weight: 400;
+      font-size: clamp(40px, 4.2vw, 76px);
+      letter-spacing: -0.03em;
+      line-height: 0.9;
+    }
+    .director {
+      margin-top: 8px;
+      font-family: "Instrument Serif", serif;
+      font-style: italic;
+      font-size: 22px;
+      color: var(--faint);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .trailer-top .facts { margin-top: 2px; }
+    .headline-times {
+      flex-shrink: 0;
+      max-width: 34vw;
+      text-align: right;
+      padding-bottom: 6px;
+    }
+    .headline-times .day-label { margin: 0 0 4px; font-size: 22px; }
+    .headline-times .format-times { justify-content: flex-end; }
+    .trailer-stage { position: absolute; inset: 0; overflow: hidden; background: #000; }
+    .trailer-stage .frame {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: max(100%, 177.78vh);
+      height: max(100%, 56.25vw);
+      border: 0;
+    }
+    .poster-sleeve {
+      height: 84vh;
+      display: flex;
+      align-items: center;
+    }
+    .poster-sleeve .poster {
+      position: relative;
+      inset: auto;
+      height: 84vh;
+      width: auto;
+      max-width: 40vw;
+      object-fit: contain;
+      background: transparent;
+    }
+    .format-name {
+      margin: 6px 0 2px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      font-weight: 400;
+      font-size: 12px;
+      color: var(--faint);
+    }
+    .format-times {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px 12px;
+      font-weight: 500;
+      font-variant-numeric: tabular-nums;
+      font-size: 20px;
+      color: var(--ink);
+    }
+    .frame {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      z-index: 0;
+      object-fit: contain;
+      background: #070708;
+    }
+    .poster {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      object-position: center;
+      transform: none;
+      filter: none;
+      background: #070708;
+      z-index: 0;
+    }
+    .veil {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      background: #070708 center/contain no-repeat;
+      opacity: 1;
+      transition: opacity 0.35s ease;
+      pointer-events: none;
+    }
+    body.cinema.rolling .veil { opacity: 0; }
+    .shade {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      background: linear-gradient(to top, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.15) 34%, transparent 52%);
+      pointer-events: none;
+    }
+    .bill {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 2;
+      padding: 16vh 4vw 5vh;
+      background: none;
+      transform: translateZ(0);
+    }
+    .bill h2 {
+      margin: 0;
+      font-family: "Instrument Serif", serif;
+      font-weight: 400;
+      font-size: clamp(42px, 4vw, 84px);
+      letter-spacing: -0.03em;
+      line-height: 0.92;
+    }
+    .facts {
+      margin-top: 8px;
+      color: var(--muted);
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      font-size: 13px;
+    }
+    .times {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 22px;
+      margin-top: 18px;
+      font-variant-numeric: tabular-nums;
+      font-size: 22px;
+      letter-spacing: 0.04em;
+    }
+    .hint {
+      position: absolute;
+      right: 3vw;
+      bottom: 3.2vh;
+      z-index: 3;
+      color: var(--faint);
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      font-size: 11px;
+    }
+    body.sound .hint { color: #d6ff6b; }
     @keyframes listen {
       0%, 100% { transform: scale(0.62); opacity: 0.25; }
       50% { transform: scale(0.84); opacity: 0.7; }
     }
   </style>
 </head>
-<body class="listening empty">
+<body class="cinema">
   <div class="wash"><img id="wash" alt=""></div>
-  <main class="stage">
-    <div class="mark"><span class="dot"></span><span id="mark">Listening</span></div>
-    <div class="center">
-      <div class="sleeve" id="sleeve">
-        <div class="ring"></div>
-        <img class="cover" id="cover" alt="">
+  <div class="mark" id="mark-row"><span class="dot"></span><span id="mark">Marquee</span></div>
+  <section class="scene music">
+    <div class="lyrics" id="lyrics"></div>
+    <div class="sleeve">
+      <div class="ring"></div>
+      <img class="cover" id="cover" alt="">
+    </div>
+    <div class="meta">
+      <h1 id="title">Listening</h1>
+      <div class="artist" id="artist"></div>
+      <div class="album" id="album"></div>
+    </div>
+  </section>
+  <section class="scene cinema">
+    <div class="poster-board" id="poster-board">
+      <div class="poster-sleeve">
+        <img class="poster" id="poster" alt="">
       </div>
       <div class="meta">
-        <h1 id="title">Listening</h1>
-        <div class="artist" id="artist"></div>
-        <div class="album" id="album"></div>
+        <h2 id="film">Tonight</h2>
+        <div class="facts" id="facts"></div>
+        <div id="formats"></div>
       </div>
     </div>
-    <div></div>
-  </main>
+    <div class="trailer-board" id="trailer-board">
+      <div class="trailer-top">
+        <div class="headline">
+          <h2 id="film-play"></h2>
+          <div class="director" id="director-play" hidden></div>
+          <div class="facts" id="facts-play"></div>
+        </div>
+        <div class="headline-times" id="formats-play"></div>
+      </div>
+      <div class="trailer-stage" id="frame-slot"></div>
+    </div>
+  </section>
   <script>
     const body = document.body;
     const cover = document.getElementById("cover");
@@ -202,52 +409,296 @@
     const title = document.getElementById("title");
     const artist = document.getElementById("artist");
     const album = document.getElementById("album");
+    const lyrics = document.getElementById("lyrics");
     const mark = document.getElementById("mark");
-    const sleeve = document.getElementById("sleeve");
+    const markRow = document.getElementById("mark-row");
+    const formats = document.getElementById("formats");
+    const formatsPlay = document.getElementById("formats-play");
+    const filmPlay = document.getElementById("film-play");
+    const factsPlay = document.getElementById("facts-play");
+    const directorPlay = document.getElementById("director-play");
+    const frameSlot = document.getElementById("frame-slot");
+    let phase = "poster";
+    let phaseUntil = 0;
+    let lastBoard = null;
+    let frame = null;
+    const poster = document.getElementById("poster");
+    const film = document.getElementById("film");
+    const facts = document.getElementById("facts");
     let currentKey = "";
+    let wasPlaying = false;
+    let markTimer = 0;
+    let movieKey = "";
+    let movieIndex = 0;
+    let rotateAt = 0;
+    let lyricAnchor = { position: 0, at: 0 };
+    let movieList = [];
+    let trailerDur = 0;
+    const forced = new URLSearchParams(location.search).get("scene");
 
-    function render(data) {
-      const playing = data.status === "playing" && data.title;
-      const quiet = data.status === "quiet" && data.title;
-      body.className = playing ? "playing" : quiet ? "quiet" : "listening empty";
-      mark.textContent = playing ? "Now playing" : quiet ? "Last heard" : "Listening";
+    function trailerSrc(id, sound) {
+      const mute = sound ? "0" : "1";
+      return "https://www.youtube-nocookie.com/embed/" + id
+        + "?autoplay=1&mute=" + mute
+        + "&controls=0&rel=0&modestbranding=1&playsinline=1"
+        + "&enablejsapi=1&iv_load_policy=3&cc_load_policy=1&cc_lang_pref=en&start=2&origin=" + encodeURIComponent(location.origin);
+    }
 
+    function flashMark(text) {
+      mark.textContent = text;
+      markRow.classList.add("show");
+      clearTimeout(markTimer);
+      markTimer = setTimeout(() => markRow.classList.remove("show"), 4200);
+    }
+
+    function postMute() {
+      fetch("/mute", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      }).catch(() => {});
+    }
+
+    function holdTrailer() {
+      body.classList.remove("rolling");
+    }
+
+    function renderMusic(data) {
+      const playing = data.status === "playing" && Boolean(data.title);
+      if (playing && (!wasPlaying || data.key !== currentKey)) flashMark("Now playing");
+      if (!playing && wasPlaying) flashMark("Last heard");
+      wasPlaying = playing;
       if (!data.title) {
         title.textContent = "Listening";
         artist.textContent = "";
         album.textContent = "";
+        lyrics.replaceChildren();
         cover.classList.remove("show");
         wash.classList.remove("show");
+        cover.removeAttribute("src");
+        wash.removeAttribute("src");
+        cover.alt = "";
+        body.classList.add("listening");
         return;
       }
-
-      const src = data.art ? data.art + "?v=" + encodeURIComponent(data.changed_at || data.key) : "";
-      if (data.key !== currentKey) {
-        currentKey = data.key;
-        sleeve.classList.remove("enter");
-        void sleeve.offsetWidth;
-        sleeve.classList.add("enter");
+      const src = data.art || "";
+      if (data.key !== currentKey) currentKey = data.key;
+      if (src) {
+        if (cover.getAttribute("src") !== src) {
+          cover.src = src;
+          wash.src = src;
+        }
+      } else if (cover.hasAttribute("src")) {
+        cover.removeAttribute("src");
+        wash.removeAttribute("src");
       }
-      if (src && cover.getAttribute("src") !== src) {
-        cover.src = src;
-        wash.src = src;
-      }
+      cover.alt = [data.title, data.artist].filter(Boolean).join(" - ");
       cover.classList.toggle("show", Boolean(src));
-      wash.classList.toggle("show", Boolean(src) && playing);
+      wash.classList.toggle("show", Boolean(src));
       title.textContent = data.title;
       artist.textContent = data.artist || "";
       album.textContent = data.album || "";
+      if (!data.show_lyrics) {
+        lyrics.replaceChildren();
+        return;
+      }
+      const words = data.synced || [];
+      if (!words.length) {
+        lyrics.textContent = "Finding the words";
+        return;
+      }
+      if (lyrics.childElementCount !== words.length) {
+        lyrics.replaceChildren(...words.map((word) => {
+          const span = document.createElement("span");
+          span.className = "word";
+          span.textContent = word.w;
+          span.dataset.t = word.t;
+          return span;
+        }));
+      }
+    }
+
+    function tickLyrics() {
+      if (!body.classList.contains("lyrics")) return;
+      const nodes = lyrics.children;
+      if (!nodes.length || !nodes[0].dataset.t) return;
+      const position = lyricAnchor.position + (performance.now() - lyricAnchor.at) / 1000;
+      let current = 0;
+      for (let i = 0; i < nodes.length; i++) {
+        if (Number(nodes[i].dataset.t) <= position) current = i;
+      }
+      for (let i = 0; i < nodes.length; i++) {
+        nodes[i].className = i === current ? "word on" : i < current ? "word sung" : "word";
+      }
+    }
+
+    function renderCinema(data) {
+      const board = data.cinema || {};
+      const movies = board.movies || [];
+      mark.textContent = [board.name, board.label].filter(Boolean).join("  ·  ") || "Cinemark";
+      if (!movies.length) {
+        film.textContent = board.name || "No showtimes";
+        facts.textContent = "";
+        directorPlay.hidden = true;
+        formats.replaceChildren();
+        return;
+      }
+      const key = movies.map((movie) => movie.title).join("|");
+      movieList = movies;
+      const now = Date.now();
+      if (key !== movieKey) {
+        movieKey = key;
+        movieIndex = 0;
+        phase = "poster";
+        phaseUntil = now + 30000;
+      } else if (phaseUntil && now > phaseUntil) {
+        if (phase === "poster" && movies[movieIndex].trailer) {
+          phase = "trailer";
+          /* safety only — the clock follows the player's own duration,
+             so the whole trailer gets to play */
+          phaseUntil = now + 180000;
+        } else {
+          if (phase === "trailer") {
+            /* its trailer is gone: sound was for that one only */
+            postMute();
+          }
+          movieIndex = (movieIndex + 1) % movies.length;
+          phase = "poster";
+          phaseUntil = now + 30000;
+        }
+      }
+      const movie = movies[movieIndex];
+      body.classList.toggle("trailer", phase === "trailer");
+      film.textContent = movie.title;
+      facts.textContent = [movie.rating, movie.runtime].filter(Boolean).join("   ");
+      const days = movie.days && movie.days.length
+        ? movie.days
+        : [{ label: "", formats: movie.formats || [{ name: "", times: movie.times || [] }] }];
+      const clusters = [];
+      for (const day of days) {
+        const cluster = document.createElement("div");
+        cluster.className = "day-cluster";
+        if (day.label) {
+          const heading = document.createElement("div");
+          heading.className = "day-label";
+          heading.textContent = day.label;
+          cluster.appendChild(heading);
+        }
+        for (const group of day.formats || []) {
+          if (group.name) {
+            const name = document.createElement("div");
+            name.className = "format-name";
+            name.textContent = group.name;
+            cluster.appendChild(name);
+          }
+          const row = document.createElement("div");
+          row.className = "format-times";
+          for (const label of group.times || []) {
+            const span = document.createElement("span");
+            span.textContent = label;
+            row.appendChild(span);
+          }
+          cluster.appendChild(row);
+        }
+        clusters.push(cluster);
+      }
+      formats.replaceChildren(...clusters);
+      formatsPlay.replaceChildren(...(clusters.length ? [clusters[0].cloneNode(true)] : []));
+      if (movie.poster) {
+        if (poster.getAttribute("src") !== movie.poster) poster.src = movie.poster;
+      } else if (poster.hasAttribute("src")) {
+        poster.removeAttribute("src");
+      }
+      poster.alt = movie.title ? movie.title + " poster" : "";
+      filmPlay.textContent = movie.title;
+      factsPlay.textContent = facts.textContent;
+      directorPlay.textContent = movie.director || "";
+      directorPlay.hidden = !movie.director;
+      if (phase === "trailer" && movie.trailer) {
+        const want = Boolean(data.trailer_sound);
+        if (!frame || frame.dataset.id !== movie.trailer || frame.dataset.want !== String(want)) {
+          if (frame) frame.remove();
+          frame = document.createElement("iframe");
+          frame.className = "frame";
+          frame.title = "Trailer";
+          frame.dataset.id = movie.trailer;
+          frame.dataset.want = String(want);
+          frame.allow = "autoplay; encrypted-media";
+          frame.src = trailerSrc(movie.trailer, want);
+          frameSlot.appendChild(frame);
+          trailerDur = 0;
+        }
+      } else if (frame) {
+        frame.remove();
+        frame = null;
+      }
+    }
+
+    function render(data) {
+      const scene = forced || data.scene || "cinema";
+      const classes = [scene];
+      if (data.status === "quiet") classes.push("quiet");
+      if (data.trailer_sound) classes.push("sound");
+      if (scene === "music" && data.show_lyrics) classes.push("lyrics");
+      body.className = classes.join(" ");
+      lyricAnchor = { position: data.song_position || 0, at: performance.now() };
+      lastBoard = data;
+      if (!data.title && scene === "music") body.classList.add("listening");
+      if (scene === "music") {
+        if (frame) {
+          frame.remove();
+          frame = null;
+        }
+        phaseUntil = 0;
+        renderMusic(data);
+      } else {
+        renderCinema(data);
+      }
     }
 
     function connect() {
       const events = new EventSource("/events");
-      events.onmessage = (event) => render(JSON.parse(event.data));
+      events.onmessage = (event) => {
+        try { render(JSON.parse(event.data)); } catch (err) { /* ignore a bad frame */ }
+      };
       events.onerror = () => {
         events.close();
         setTimeout(connect, 1500);
       };
     }
+    window.addEventListener("message", (event) => {
+      let data = event.data;
+      if (typeof data === "string") {
+        try { data = JSON.parse(data); } catch (err) { return; }
+      }
+      const info = data && data.info;
+      if (!info) return;
+      if (info.playerState === 1) body.classList.add("rolling");
+      else holdTrailer();
+      /* the player knows how long the trailer is — keep the phase clock
+         in step with it so rotation always happens */
+      if (info.duration) trailerDur = info.duration;
+      if (phase === "trailer" && trailerDur && info.currentTime != null && info.playerState === 1) {
+        phaseUntil = Date.now() + (trailerDur - info.currentTime) * 1000 + 2500;
+      }
+      if (info.playerState === 0 && movieList.length) {
+        /* trailer finished on its own: sound was for that one only */
+        postMute();
+        movieIndex = (movieIndex + 1) % movieList.length;
+        phase = "poster";
+        phaseUntil = Date.now() + 30000;
+        if (lastBoard) renderCinema(lastBoard);
+      }
+    });
+    setInterval(() => {
+      if (!frame || !frame.contentWindow) return;
+      frame.contentWindow.postMessage(JSON.stringify({ event: "listening", id: 1 }), "*");
+    }, 1000);
     connect();
+    setInterval(tickLyrics, 120);
+    setInterval(() => {
+      if (lastBoard && body.classList.contains("cinema")) renderCinema(lastBoard);
+    }, 1000);
   </script>
 </body>
 </html>

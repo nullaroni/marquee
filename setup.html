@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Marquee setup</title>
+  <style>
+    body { margin: 0; min-height: 100vh; background: #111; color: #f4f1ea; font: 16px/1.4 sans-serif; }
+    main { max-width: 520px; margin: 10vh auto; padding: 0 24px; }
+    input, button { font: inherit; padding: 10px 12px; }
+    input { width: 220px; }
+    button { margin-left: 8px; }
+    p { color: rgba(244,241,234,0.7); }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Theater</h1>
+    <p id="current">Loading…</p>
+    <form id="find">
+      <input name="q" placeholder="ZIP or city" autocomplete="off">
+      <button type="submit">Find</button>
+      <button type="button" id="here">Use my location</button>
+    </form>
+    <p id="result" role="status" aria-live="polite"></p>
+  </main>
+  <script>
+    const current = document.getElementById("current");
+    const result = document.getElementById("result");
+    fetch("/api/config").then((r) => {
+      if (!r.ok) throw new Error("config");
+      return r.json();
+    }).then((cfg) => {
+      current.textContent = cfg.theater_name || ("Theater " + (cfg.theater_id || ""));
+    }).catch(() => { current.textContent = "Could not load current theater."; });
+    async function lookup(query) {
+      try {
+        const r = await fetch("/api/theaters?" + query);
+        if (!r.ok) throw new Error("lookup");
+        return await r.json();
+      } catch (err) {
+        result.textContent = "Search failed. Try again.";
+        return undefined;
+      }
+    }
+    async function save(theater) {
+      if (!theater || !theater.id) {
+        result.textContent = "No Cinemark found.";
+        return;
+      }
+      try {
+        const r = await fetch("/api/config", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ theater_id: theater.id, theater_name: theater.name || "" }),
+        });
+        if (!r.ok) throw new Error("save");
+      } catch (err) {
+        result.textContent = "Could not save. Try again.";
+        return;
+      }
+      current.textContent = theater.name || ("Theater " + theater.id);
+      result.textContent = "Saved.";
+    }
+    document.getElementById("find").onsubmit = async (event) => {
+      event.preventDefault();
+      const q = new FormData(event.target).get("q");
+      const theater = await lookup("q=" + encodeURIComponent(q));
+      if (theater !== undefined) save(theater);
+    };
+    document.getElementById("here").onclick = () => {
+      if (!navigator.geolocation) { result.textContent = "Location unavailable."; return; }
+      navigator.geolocation.getCurrentPosition(async (pos) => {
+        const theater = await lookup("lat=" + encodeURIComponent(pos.coords.latitude) + "&lon=" + encodeURIComponent(pos.coords.longitude));
+        if (theater !== undefined) save(theater);
+      }, () => { result.textContent = "Location unavailable."; });
+    };
+  </script>
+</body>
+</html>
