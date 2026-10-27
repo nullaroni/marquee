@@ -424,6 +424,12 @@ def refresh_cinema():
         return
     if config.get("theater_name"):
         board["name"] = config["theater_name"]
+    for movie in board.get("movies") or []:
+        # Keep a local copy so posters survive a Cinemark CDN hiccup. If the download
+        # fails, the remote URL stays and the browser tries it directly.
+        name = cinema.cache_poster(movie.get("poster") or "")
+        if name:
+            movie["poster"] = f"/posters/{name}"
     with state_lock:
         cinema_board = board
     print(f"cinema {len(board.get('movies') or [])} movies at {board.get('name')}", flush=True)
@@ -560,6 +566,13 @@ class Handler(BaseHTTPRequestHandler):
             elif "q" in query:
                 found = cinema.nearest_text(query["q"][0])
             self._send(200, json.dumps(found or {}), "application/json")
+            return
+        if path.startswith("/posters/"):
+            found = cinema.poster_file(path[len("/posters/"):])
+            if found:
+                self._send(200, found[1], found[0])
+                return
+            self._send(404, b"not found", "text/plain")
             return
         if path == "/art":
             with state_lock:
