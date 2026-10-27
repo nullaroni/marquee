@@ -6,6 +6,7 @@ model with the trailer, poster, and times. No API key.
 
 from __future__ import annotations
 
+import hashlib
 import html
 import json
 import os
@@ -28,6 +29,11 @@ LAKELAND = {
 }
 WIKI = "https://en.wikipedia.org/api/rest_v1/page/summary/"
 DIRECTOR_CACHE = os.path.expanduser("~/.local/share/marquee/directors.json")
+POSTER_DIR = os.path.expanduser("~/.local/share/marquee/posters")
+POSTER_MAX_BYTES = 6 * 1024 * 1024
+POSTER_TYPES = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif"}
+POSTER_MIME = {ext: ctype for ctype, ext in POSTER_TYPES.items()}
+_POSTER_NAME = re.compile(r"[0-9a-f]{32}\.(?:jpg|png|webp|gif)")
 _directors: dict | None = None
 
 
@@ -91,6 +97,59 @@ def _save_directors() -> None:
             os.unlink(tmp)
         except OSError:
             pass
+
+
+def cache_poster(url: str) -> str:
+    """Save a poster once under POSTER_DIR and return its file name, or "" on failure.
+
+    Posters are keyed by URL, so a poster that is already on disk is never fetched again.
+    """
+    if not url:
+        return ""
+    stem = hashlib.sha256(url.encode()).hexdigest()[:32]
+    for ext in POSTER_TYPES.values():
+        if os.path.isfile(os.path.join(POSTER_DIR, f"{stem}.{ext}")):
+            return f"{stem}.{ext}"
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": UA})
+        with urllib.request.urlopen(req, timeout=15) as response:
+            ctype = response.headers.get("Content-Type", "").split(";")[0].strip().lower()
+            body = response.read(POSTER_MAX_BYTES + 1)
+    except Exception as exc:
+        print(f"poster fetch failed: {exc}", flush=True)
+        return ""
+    ext = POSTER_TYPES.get(ctype)
+    if not ext or not body or len(body) > POSTER_MAX_BYTES:
+        print(f"poster skipped: {ctype or 'no type'} {len(body)} bytes", flush=True)
+        return ""
+    name = f"{stem}.{ext}"
+    tmp = os.path.join(POSTER_DIR, f"{name}.{os.getpid()}.tmp")
+    try:
+        os.makedirs(POSTER_DIR, exist_ok=True)
+        with open(tmp, "wb") as handle:
+            handle.write(body)
+        os.replace(tmp, os.path.join(POSTER_DIR, name))
+    except OSError as exc:
+        print(f"poster not saved: {exc}", flush=True)
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        return ""
+    return name
+
+
+def poster_file(name: str) -> tuple[str, bytes] | None:
+    """Return (content type, bytes) for a cached poster, or None if the name is not one of ours."""
+    if not _POSTER_NAME.fullmatch(name or ""):
+        return None
+    path = os.path.join(POSTER_DIR, name)
+    try:
+        with open(path, "rb") as handle:
+            body = handle.read()
+    except OSError:
+        return None
+    return POSTER_MIME[name.rsplit(".", 1)[1]], body
 
 
 _LETTER = r"[^\W\d_]"

@@ -91,5 +91,50 @@ class CacheTests(unittest.TestCase):
             self.assertEqual(cinema._director("Old"), "Ann Lee")
 
 
+class PosterCacheTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.dir = os.path.join(self.tmp.name, "posters")
+        patcher = mock.patch.object(cinema, "POSTER_DIR", self.dir)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def fake_response(self, body, ctype):
+        response = mock.MagicMock()
+        response.__enter__.return_value = response
+        response.headers = {"Content-Type": ctype}
+        response.read.return_value = body
+        return mock.patch.object(cinema.urllib.request, "urlopen", return_value=response)
+
+    def test_saved_once_then_served_from_disk(self):
+        url = "https://www.cinemark.com/media/abc/poster.jpg"
+        with self.fake_response(b"\xff\xd8jpeg", "image/jpeg; charset=binary"):
+            name = cinema.cache_poster(url)
+        self.assertTrue(name.endswith(".jpg"))
+        self.assertEqual(os.listdir(self.dir), [name])
+        with mock.patch.object(cinema.urllib.request, "urlopen", side_effect=AssertionError("refetched")):
+            self.assertEqual(cinema.cache_poster(url), name)
+        self.assertEqual(cinema.poster_file(name), ("image/jpeg", b"\xff\xd8jpeg"))
+
+    def test_failure_returns_empty_and_caches_nothing(self):
+        with mock.patch.object(cinema.urllib.request, "urlopen", side_effect=OSError("down")):
+            self.assertEqual(cinema.cache_poster("https://example.test/p.jpg"), "")
+        self.assertFalse(os.path.exists(self.dir))
+
+    def test_non_image_not_saved(self):
+        with self.fake_response(b"<html>nope</html>", "text/html"):
+            self.assertEqual(cinema.cache_poster("https://example.test/p.jpg"), "")
+        self.assertFalse(os.path.exists(self.dir))
+
+    def test_empty_url(self):
+        self.assertEqual(cinema.cache_poster(""), "")
+
+    def test_poster_file_rejects_other_names(self):
+        self.assertIsNone(cinema.poster_file("../directors.json"))
+        self.assertIsNone(cinema.poster_file("0" * 32 + ".exe"))
+        self.assertIsNone(cinema.poster_file("0" * 32 + ".jpg"))
+
+
 if __name__ == "__main__":
     unittest.main()

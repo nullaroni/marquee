@@ -162,6 +162,10 @@ class HTTPTests(unittest.TestCase):
             self.skipTest("no fonts")
         self.assertEqual(self.request("GET", f"/fonts/{fonts[0].name}")[0], 200)
 
+    def test_posters_traversal_404(self):
+        self.assertEqual(self.raw_get("/posters/../config.json"), 404)
+        self.assertEqual(self.raw_get("/posters/" + "0" * 32 + ".jpg"), 404)
+
     def test_post_without_json_type_is_415(self):
         status, _ = self.request("POST", "/api/config", b'{"theater_id": 5}', {"Content-Type": "text/plain"})
         self.assertEqual(status, 415)
