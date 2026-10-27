@@ -1,0 +1,13 @@
+[Unit]
+Description=Marquee kiosk
+After=pipewire.service pipewire-pulse.service
+Wants=pipewire.service
+
+[Service]
+ExecStart=%h/.local/share/marquee/venv/bin/python %h/.local/share/marquee/server.py
+Environment=PATH=%h/.local/bin:%h/.cargo/bin:/usr/local/bin:/usr/bin:/bin
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=default.target

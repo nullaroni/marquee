@@ -1,5 +1,5 @@
 #!/bin/bash
-# Fullscreen now-playing display. Close it with Super+Q; the listener keeps running.
+# Fullscreen marquee. Close it with Super+Q; the listener keeps running.
 set -euo pipefail
 
 omarchy-toggle-idle stay-awake >/dev/null 2>&1 || true
@@ -12,7 +12,7 @@ done
 
 exec chromium \
   --app=http://127.0.0.1:8787/ \
-  --class=nowplaying \
+  --class=marquee \
   --kiosk \
   --start-fullscreen \
   --no-first-run \
@@ -22,4 +22,4 @@ exec chromium \
   --disable-features=Translate,HardwareMediaKeyHandling \
   --autoplay-policy=no-user-gesture-required \
   --check-for-update-interval=31536000 \
-  --user-data-dir="${HOME}/.local/share/nowplaying/chrome-profile"
+  --user-data-dir="${HOME}/.local/share/marquee/chrome-profile"
