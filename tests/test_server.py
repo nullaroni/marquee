@@ -227,5 +227,46 @@ class HTTPTests(unittest.TestCase):
         self.assertEqual(self.request("POST", "/phase", b"{}", {"Content-Type": "application/json"})[0], 404)
 
 
+class CinemaRefreshTests(unittest.TestCase):
+    def setUp(self):
+        self._board = server.cinema_board
+        self._config = server.config
+        self._fetch = server.cinema.board
+        self._cache = server.cinema.cache_poster
+        server.config = {"theater_id": 7, "theater_name": "", "quiet_for_cinema": 120}
+        server.cinema.cache_poster = lambda url: ""
+        server.cinema_board = {"id": 7, "name": "Old", "movies": [{"title": "Kept"}]}
+
+    def tearDown(self):
+        server.cinema_board = self._board
+        server.config = self._config
+        server.cinema.board = self._fetch
+        server.cinema.cache_poster = self._cache
+
+    def test_empty_fetch_keeps_last_board(self):
+        server.cinema.board = lambda theater_id: {"id": 7, "name": "New", "movies": []}
+        self.assertFalse(server.refresh_cinema())
+        self.assertEqual(server.cinema_board["movies"], [{"title": "Kept"}])
+
+    def test_error_keeps_last_board(self):
+        def fail(theater_id):
+            raise OSError("no network")
+        server.cinema.board = fail
+        self.assertFalse(server.refresh_cinema())
+        self.assertEqual(server.cinema_board["movies"], [{"title": "Kept"}])
+
+    def test_good_fetch_replaces_board(self):
+        server.cinema.board = lambda theater_id: {"id": 7, "name": "New", "movies": [{"title": "Fresh"}]}
+        self.assertTrue(server.refresh_cinema())
+        self.assertEqual(server.cinema_board["movies"], [{"title": "Fresh"}])
+
+    def test_new_theater_replaces_board_even_when_empty(self):
+        server.config["theater_id"] = 8
+        server.cinema.board = lambda theater_id: {"id": theater_id, "name": "Other", "movies": []}
+        self.assertFalse(server.refresh_cinema())
+        self.assertEqual(server.cinema_board["id"], 8)
+        self.assertEqual(server.cinema_board["movies"], [])
+
+
 if __name__ == "__main__":
     unittest.main()

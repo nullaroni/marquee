@@ -33,6 +33,8 @@ HW_DEVICE = "hw:0,0"
 QUIET_AFTER = 18
 DEFAULT_CINEMA_AFTER = 120
 SOUND_LEVEL = 0.012
+CINEMA_REFRESH = 20 * 60
+CINEMA_RETRY = 60
 ALLOWED_ORIGINS = ("http://127.0.0.1:8787", "http://localhost:8787")
 
 state_lock = threading.Lock()
@@ -414,14 +416,15 @@ def listen_loop():
             time.sleep(2)
 
 
-def refresh_cinema():
+def refresh_cinema() -> bool:
+    """Fetch the showtimes board. Returns True when it has movies."""
     global cinema_board
     theater_id = config.get("theater_id") or cinema.LAKELAND["id"]
     try:
         board = cinema.board(int(theater_id))
     except Exception as exc:
         print(f"cinema refresh failed: {exc}", flush=True)
-        return
+        return False
     if config.get("theater_name"):
         board["name"] = config["theater_name"]
     for movie in board.get("movies") or []:
@@ -430,16 +433,31 @@ def refresh_cinema():
         name = cinema.cache_poster(movie.get("poster") or "")
         if name:
             movie["poster"] = f"/posters/{name}"
+    movies = board.get("movies") or []
     with state_lock:
+        previous = cinema_board
+        if not movies and previous.get("movies") and previous.get("id") == board.get("id"):
+            # Failed fetches come back empty (no network yet at boot, a Cinemark outage).
+            # Keep the last good board for this theater instead of blanking the screen.
+            print(f"cinema refresh empty, keeping {len(previous['movies'])} movies", flush=True)
+            return False
         cinema_board = board
-    print(f"cinema {len(board.get('movies') or [])} movies at {board.get('name')}", flush=True)
+    print(f"cinema {len(movies)} movies at {board.get('name')}", flush=True)
     publish()
+    return bool(movies)
 
 
 def cinema_loop():
+    retry = CINEMA_RETRY
     while True:
-        refresh_cinema()
-        time.sleep(20 * 60)
+        if refresh_cinema():
+            retry = CINEMA_RETRY
+            time.sleep(CINEMA_REFRESH)
+        else:
+            # Retry soon after a failure, backing off so a theater with no showtimes
+            # does not hit Cinemark every minute.
+            time.sleep(retry)
+            retry = min(retry * 2, CINEMA_REFRESH)
 
 
 def boost_mic():
