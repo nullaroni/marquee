@@ -32,7 +32,11 @@
       if (!r.ok) throw new Error("config");
       return r.json();
     }).then((cfg) => {
-      current.textContent = cfg.theater_name || ("Theater " + (cfg.theater_id || ""));
+      if (cfg.theater_id) {
+        current.textContent = cfg.theater_name || ("Theater " + cfg.theater_id);
+      } else {
+        current.textContent = "No theater picked yet. Search for one near you.";
+      }
     }).catch(() => { current.textContent = "Could not load current theater."; });
     async function lookup(query) {
       try {
