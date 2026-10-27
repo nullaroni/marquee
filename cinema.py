@@ -21,12 +21,6 @@ UA = "marquee-kiosk"
 SHOWTIMES = "https://www.cinemark.com/umbraco/surface/Showtimes/GetByTheaterId"
 THEATERS_TEXT = "https://www.cinemark.com/umbraco/surface/theaters/GetTheatresByText"
 THEATERS_GEO = "https://www.cinemark.com/umbraco/surface/theaters/GetTheatresByGeo"
-LAKELAND = {
-    "id": 1078,
-    "name": "Cinemark Lakeland Square Mall and XD",
-    "city": "Lakeland",
-    "state": "FL",
-}
 WIKI = "https://en.wikipedia.org/api/rest_v1/page/summary/"
 DIRECTOR_CACHE = os.path.expanduser("~/.local/share/marquee/directors.json")
 POSTER_DIR = os.path.expanduser("~/.local/share/marquee/posters")
@@ -350,7 +344,7 @@ def board(theater_id: int, now: datetime | None = None) -> dict:
         movies.append(entry)
     return {
         "id": int(theater_id),
-        "name": theater_name or LAKELAND["name"],
+        "name": theater_name,
         "label": "Next few days",
         "date": today.isoformat(),
         "movies": movies,
